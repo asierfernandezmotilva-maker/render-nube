@@ -1,0 +1,46 @@
+# Render de vídeo con Remotion, gratis (repo público: minutos ilimitados y 4 núcleos).
+# El proyecto llega de un repo privado con una llave de solo lectura y el vídeo sale cifrado: aquí no se ve nada.
+name: render
+run-name: render ${{ inputs.vid }}
+on:
+  workflow_dispatch:
+    inputs:
+      repo:
+        description: repo privado con el proyecto y su render.sh
+        required: true
+      ref:
+        description: rama o commit del trabajo
+        required: true
+      vid:
+        description: id del vídeo (se lo pasa a render.sh)
+        required: true
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 330
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: asierfernandezmotilva-maker/${{ inputs.repo }}
+          ref: ${{ inputs.ref }}
+          ssh-key: ${{ inputs.repo == 'enoughpath-render' && secrets.KEY_EP || secrets.KEY_PENCIL }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: "**/package-lock.json"
+      - name: render
+        env:
+          VID: ${{ inputs.vid }}
+        # sin salida en el log público; si falla, solo el final del error
+        run: bash render.sh "$VID" > /dev/null 2> render.err || { tail -c 2500 render.err; exit 1; }
+      - name: cifrar
+        env:
+          CLAVE: ${{ secrets.CLAVE }}
+        run: openssl enc -aes-256-cbc -pbkdf2 -iter 200000 -salt -in out.mp4 -out out.bin -pass env:CLAVE
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.vid }}
+          path: out.bin
+          retention-days: 1
