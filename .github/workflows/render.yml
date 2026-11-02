@@ -14,10 +14,17 @@ on:
       vid:
         description: id del vídeo (se lo pasa a render.sh)
         required: true
+      tramos:
+        description: 'trozos en paralelo, p. ej. ["0-4499","4500-8999","audio"] (render.sh los junta fuera); por defecto entero'
+        required: false
+        default: '["todo"]'
 jobs:
   render:
     runs-on: ubuntu-latest
     timeout-minutes: 330
+    strategy:
+      matrix:
+        tramo: ${{ fromJSON(inputs.tramos) }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -33,14 +40,15 @@ jobs:
       - name: render
         env:
           VID: ${{ inputs.vid }}
+          TRAMO: ${{ matrix.tramo }}
         # sin salida en el log público; si falla, solo el final del error
-        run: bash render.sh "$VID" > /dev/null 2> render.err || { tail -c 2500 render.err; exit 1; }
+        run: bash render.sh "$VID" "$TRAMO" > /dev/null 2> render.err || { tail -c 2500 render.err; exit 1; }
       - name: cifrar
         env:
           CLAVE: ${{ secrets.CLAVE }}
         run: openssl enc -aes-256-cbc -pbkdf2 -iter 200000 -salt -in out.mp4 -out out.bin -pass env:CLAVE
       - uses: actions/upload-artifact@v4
         with:
-          name: ${{ inputs.vid }}
+          name: ${{ matrix.tramo == 'todo' && inputs.vid || format('{0}_{1}', inputs.vid, matrix.tramo) }}
           path: out.bin
           retention-days: 1
