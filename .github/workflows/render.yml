@@ -23,6 +23,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 330
     strategy:
+      fail-fast: false  # 16-nov: si un trozo se cuelga (texturas en la nube), los demás acaban y «gh run rerun --failed» repite solo ese
       matrix:
         tramo: ${{ fromJSON(inputs.tramos) }}
     steps:
