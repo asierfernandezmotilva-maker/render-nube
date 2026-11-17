@@ -20,7 +20,7 @@ on:
         default: '["todo"]'
 jobs:
   render:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04  # 17-nov: ubuntu-latest pasó a 26.04 y Playwright 1.56 no instala sus dependencias allí
     timeout-minutes: 330
     strategy:
       fail-fast: false  # 16-nov: si un trozo se cuelga (texturas en la nube), los demás acaban y «gh run rerun --failed» repite solo ese
